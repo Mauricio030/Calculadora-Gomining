@@ -1,0 +1,9 @@
+GRANJA GOMINING - app instalable (sin datos personales)
+
+Archivos: index.html, manifest.webmanifest, sw.js y los iconos .png. Sube todos a la raíz del sitio.
+
+GitHub Pages: crea un repositorio público, sube estos archivos, ve a Settings > Pages, elige la rama main y la carpeta / (root). Abre la dirección que te da.
+Netlify: entra a app.netlify.com/drop y arrastra la carpeta con estos archivos.
+
+Instalar: Android (Chrome) menú ⋮ > Instalar app. iPhone (Safari) Compartir > Agregar a pantalla de inicio.
+Tus datos se guardan solo en cada teléfono. Usa Ajustes > Respaldo para exportar e importar.

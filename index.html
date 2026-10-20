@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Granja GoMining</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0e0e0e"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Granja"><meta name="apple-mobile-web-app-status-bar-style" content="black"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#0e0e0e;--pn:#1a1a1a;--ln:#333;--tx:#f2f2f2;--mu:#9a9a9a;--ac:#f5e6a8;--rd:#ff6b6b;--gn:#8fd9a0;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:17px/1.35 'Times New Roman',Times,serif}
+main{padding:58px 14px 110px;max-width:640px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px}h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);margin:20px 0 8px;font-weight:400}
+.sub{color:var(--mu);font-size:14px;margin:0 0 10px}
+.hero{background:var(--tx);color:#000;border-radius:14px;padding:16px;margin:10px 0}
+.hero b{display:block;font-size:34px}.hero span{font-size:14px;color:#444}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:12px;padding:10px 12px}
+.card small{display:block;color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.card b{font-size:20px;font-weight:700}
+.neg{color:var(--rd)}.pos{color:var(--gn)}
+.row{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--pn);border:1px solid var(--ln);border-radius:12px;margin-bottom:8px}
+.row small{color:var(--mu);display:block;font-size:13px}.row .r{text-align:right}
+label{display:block;margin:0 0 10px;font-size:14px;color:var(--mu)}
+input,select{width:100%;margin-top:4px;padding:11px;border-radius:10px;border:1px solid var(--ln);background:#000;color:var(--ac);font:17px 'Times New Roman',Times,serif}
+button{font:17px 'Times New Roman',Times,serif;border-radius:10px;border:1px solid var(--ln);background:var(--pn);color:var(--tx);padding:11px 14px}
+button.p{background:var(--tx);color:#000;border:0;font-weight:700}
+.bar{position:fixed;left:0;right:0;top:0;z-index:4;display:flex;background:#000;border-bottom:1px solid var(--ln);padding-top:env(safe-area-inset-top,0px)}
+.bar button{flex:1;border:0;background:none;color:var(--mu);border-radius:0;padding:14px 4px;font-size:15px}
+.bar button.on{color:var(--tx);box-shadow:inset 0 -2px 0 var(--tx)}
+.ov{position:fixed;inset:0;background:#000c;display:flex;align-items:flex-end;z-index:5}
+.sh{background:var(--pn);width:100%;max-width:640px;margin:0 auto;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-height:90vh;overflow:auto}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.note{font-size:13px;color:var(--mu);font-style:italic}
+</style></head><body><main id="app"></main><nav class="bar" id="nav"></nav>
+<script>
+const KEY='granja-gomining-v1';
+const R0=[];
+const DEF=()=>({p:{price:82000,fx:18.5,sats:45,days:365,tokp:0.377,kwh:0.0495,serv:0.0089,otros:0,refTh:250,refTok:6120,dMax:.2,dFijo:.03,vip:1,vipStep:.003,dVoto:0,dOver:'',lock:0,plazo:4,a0:.052,a1:.1037,a2:.1554,a3:.2072},rows:R0.map(r=>({id:r[0],con:r[1],eff:r[2],th:r[3],usd:r[4],tok:r[5]}))});
+let S,tab='res',ed=null;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||!S.p)S=DEF();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const sum=(a,k)=>a.reduce((x,r)=>x+(+r[k]||0),0);
+const n=(v,d=2)=>(+v).toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
+const u=v=>(v<0?'−':'')+'$'+n(Math.abs(v));
+const pc=(v,d=1)=>n(v*100,d)+'%';
+function calc(){
+ const p=S.p,R=S.rows,th=sum(R,'th'),tok=sum(R,'tok'),inv=sum(R,'usd');
+ const invTok=sum(R.filter(r=>r.con==='Tokens'),'usd'),last={};
+ R.forEach(r=>{if(r.id&&r.eff>0)last[r.id]=+r.eff});
+ const kw=R.reduce((a,r)=>a+(r.id?r.th*(last[r.id]||0):0),0)/1000;
+ const ids=[...new Set(R.filter(r=>r.id).map(r=>r.id))];
+ const req=p.refTh>0?th*p.refTok/p.refTh:0;
+ const dVar=req>0?Math.min(p.dMax,p.dMax*tok/req):0;
+ const dVip=(Math.min(21,Math.max(1,p.vip))-1)*p.vipStep;
+ const dCalc=Math.min(1,p.dFijo+dVar+dVip+p.dVoto);
+ const d=p.dOver!==''&&!isNaN(+p.dOver)?+p.dOver:dCalc;
+ const luz=kw*24*p.kwh*(1-d),sv=th*p.serv*(1-d),cost=luz+sv+(+p.otros||0);
+ const gross=th*p.sats/1e8*p.price,apr=p['a'+(p.plazo-1)];
+ const lockUsd=Math.min(p.lock,tok)*p.tokp,yUsd=lockUsd*apr,dS=yUsd/p.days;
+ const net=gross-cost+dS,mes=net*p.days/12;
+ const eq=th>0?(cost-dS)/(th*p.sats/1e8):0;
+ const miners=ids.map(id=>{const x=R.filter(r=>r.id===id);return{id,th:sum(x,'th'),eff:last[id]||0,inv:sum(x,'usd')}});
+ return{th,tok,inv,invTok,kw,ids,req,dVar,dVip,dCalc,d,luz,sv,cost,gross,apr,lockUsd,yUsd,dS,net,mes,eq,miners,
+  eff:th?kw*1000/th:0,costTh:th?(inv-invTok)/th:0,miss:Math.max(0,req-tok),roi:inv?net*p.days/inv:0,
+  mg:gross+dS?net/(gross+dS):0,rec:net>0?inv/mes:null,cush:p.price?1-eq/p.price:0,cover:luz+sv>0?Math.min(1,dS/(luz+sv)):0};
+}
+const K=(l,v,c='')=>`<div class="card"><small>${l}</small><b class="${c}">${v}</b></div>`;
+function vRes(c){const p=S.p;return`<h1>Granja GoMining</h1><p class="sub">Resumen en vivo · BTC ${u(p.price)}</p>
+<div class="hero"><span>Ganancia neta por mes</span><b>${u(c.mes)}</b><span>${u(c.net)} al día · ${u(c.mes*p.fx).replace('$','$')} MXN al mes</span></div>
+<div class="grid">${K('Recuperación',c.rec?n(c.rec,1)+' meses':'No se recupera')}${K('ROI anual',pc(c.roi),c.roi<0?'neg':'pos')}${K('Margen neto',pc(c.mg))}${K('BTC de equilibrio',u(c.eq).replace(/\.\d+$/,''))}${K('Colchón vs precio',pc(c.cush),c.cush<0?'neg':'')}${K('Staking al mes',u(c.yUsd/12))}</div>
+<h2>Poder</h2><div class="grid">${K('TH totales',n(c.th))}${K('Eficiencia',n(c.eff,1)+' W/TH')}${K('Mineros',c.ids.length)}${K('Tokens',n(c.tok))}</div>
+<h2>Inversión</h2><div class="grid">${K('Total USD',u(c.inv))}${K('Total MXN',u(c.inv*p.fx))}${K('Costo por TH',u(c.costTh))}${K('En tokens',u(c.invTok))}</div>
+<h2>Descuento total ${pc(c.d,2)}</h2><div class="grid">${K('Racha diaria',pc(p.dFijo,2))}${K('Por tokens',pc(c.dVar,2))}${K('VIP nivel '+p.vip,pc(c.dVip,2))}${K('Votación',pc(p.dVoto,2))}</div>
+<div class="card" style="margin-top:8px"><small>Tokens que faltan para el 20%</small><b>${n(c.miss)}</b> <span class="note">de ${n(c.req)} exigidos</span></div>
+<h2>Costos por día</h2><div class="grid">${K('Ingreso bruto',u(c.gross))}${K('Luz + servicio',u(c.cost))}</div>
+<p class="note">La ganancia incluye el rendimiento del staking al precio del token capturado.</p>`}
+function vMin(c){return`<h1>Mineros</h1><p class="sub">Compras, mejoras, regalos y tokens. Toca un registro para editarlo.</p>
+<button class="p" onclick="ed=-1;draw()" style="width:100%;margin-bottom:12px">+ Agregar registro</button>
+${S.rows.length?'':'<p class="note">Aún no hay registros. Toca “Agregar registro” para empezar.</p>'}<h2>Por minero</h2>${c.miners.map(m=>`<div class="row"><div>${m.id}<small>${n(m.th)} TH · ${n(m.eff,1)} W/TH</small></div><div class="r">${u(m.inv)}<small>${m.th?u(m.inv/m.th):'—'} por TH</small></div></div>`).join('')}
+<h2>Registro</h2>${S.rows.map((r,i)=>`<div class="row" onclick="ed=${i};draw()"><div>${r.id||'—'} · ${r.con}<small>${r.con==='Tokens'?n(r.tok)+' tokens':n(r.th)+' TH · '+n(r.eff,1)+' W/TH'}</small></div><div class="r">${u(+r.usd)}</div></div>`).join('')}`}
+const F=(k,l,pct)=>`<label>${l}<input type="number" inputmode="decimal" step="any" data-k="${k}"${pct?' data-pc="1"':''} value="${S.p[k]===''?'':pct?+(S.p[k]*100).toFixed(4):S.p[k]}"></label>`;
+function vAj(){return`<h1>Ajustes</h1><p class="sub">Solo cambia lo necesario; todo se recalcula.</p>
+<h2>Mercado</h2><div class="two">${F('price','Precio BTC (USD)')}${F('fx','MXN por USD')}${F('sats','Sats por TH al día')}${F('tokp','Precio token (USD)')}</div>
+<h2>Tarifas</h2><div class="two">${F('kwh','USD por kWh')}${F('serv','Servicio USD/TH/día')}${F('otros','Otros USD/día')}${F('days','Días por año')}</div>
+<h2>Descuentos</h2><div class="two">${F('dFijo','Racha diaria %',1)}${F('dVoto','Votación %',1)}${F('dMax','Máx. por tokens %',1)}${F('vipStep','Por nivel VIP %',1)}${F('refTh','TH de referencia')}${F('refTok','Tokens exigidos')}</div>
+<label>Nivel VIP (1 a 21)<select data-k="vip">${Array.from({length:21},(_,i)=>`<option${S.p.vip==i+1?' selected':''}>${i+1}</option>`).join('')}</select></label>
+${F('dOver','Descuento real de la app % (opcional)',1)}
+<h2>Respaldo</h2><p class="note">Guarda un archivo con tus datos para pasarlos de un teléfono a otro.</p><div class="two"><button onclick="exportB()">Exportar</button><button onclick="document.getElementById('imp').click()">Importar</button></div><input id="imp" type="file" accept=".json,application/json" hidden onchange="importB(event)">
+<button onclick="if(confirm('¿Restablecer todos los datos?')){S=DEF();save();draw()}" style="margin-top:16px">Restablecer datos</button>`}
+function vSt(c){const p=S.p;return`<h1>Bloqueo de tokens</h1><p class="sub">Rinde cada semana y sigue contando para el descuento.</p>
+<div class="two">${F('lock','Tokens bloqueados')}<label>Plazo<select data-k="plazo">${[1,2,3,4].map(y=>`<option value="${y}"${p.plazo==y?' selected':''}>${y} año${y>1?'s':''}</option>`).join('')}</select></label></div>
+<h2>APR por plazo</h2><div class="two">${F('a0','1 año %',1)}${F('a1','2 años %',1)}${F('a2','3 años %',1)}${F('a3','4 años %',1)}</div>
+<h2>Rendimiento (APR ${pc(c.apr,2)})</h2><div class="grid">${K('Por semana',u(c.yUsd/52))}${K('Por mes',u(c.yUsd/12))}${K('Por año',u(c.yUsd))}${K('Total del plazo',u(c.yUsd*p.plazo))}${K('Tokens por semana',n(Math.min(p.lock,c.tok)*c.apr/52,3))}${K('Cubre luz y servicio',pc(c.cover))}</div>
+${p.lock>c.tok?'<p class="note neg">Bloqueas más tokens de los que registraste; se usa el máximo registrado.</p>':''}`}
+function vEd(){const r=ed>=0?S.rows[ed]:{id:'',con:'Compra',eff:15,th:0,usd:0,tok:0};
+ return`<div class="ov"><div class="sh"><h1>${ed>=0?'Editar':'Nuevo'} registro</h1>
+<label>Concepto<select id="f_con">${['Compra','Mejora','Gratis','Tokens'].map(x=>`<option${r.con===x?' selected':''}>${x}</option>`).join('')}</select></label>
+<label>Minero (ID)<input id="f_id" value="${r.id}"></label>
+<div class="two"><label>W/TH<input id="f_eff" type="number" inputmode="decimal" step="any" value="${r.eff}"></label><label>TH<input id="f_th" type="number" inputmode="decimal" step="any" value="${r.th}"></label>
+<label>Monto USD<input id="f_usd" type="number" inputmode="decimal" step="any" value="${r.usd}"></label><label>Tokens<input id="f_tok" type="number" inputmode="decimal" step="any" value="${r.tok}"></label></div>
+<div class="two"><button class="p" onclick="sv()">Guardar</button><button onclick="ed=null;draw()">Cancelar</button></div>
+${ed>=0?'<button onclick="S.rows.splice(ed,1);save();ed=null;draw()" style="width:100%;margin-top:8px;color:var(--rd)">Eliminar</button>':''}</div></div>`}
+function sv(){const g=i=>document.getElementById(i).value,x=i=>+g(i)||0;
+ const r={id:g('f_id').trim(),con:g('f_con'),eff:x('f_eff'),th:x('f_th'),usd:x('f_usd'),tok:x('f_tok')};
+ if(ed>=0)S.rows[ed]=r;else S.rows.push(r);save();ed=null;draw()}
+function draw(){const c=calc(),m=document.getElementById('app');
+ m.innerHTML=({res:vRes,min:vMin,aj:vAj,st:vSt})[tab](c)+(ed!==null?vEd():'');
+ document.getElementById('nav').innerHTML=[['res','Resumen'],['min','Mineros'],['st','Staking'],['aj','Ajustes']].map(t=>`<button class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';draw();scrollTo(0,0)">${t[1]}</button>`).join('');
+ m.querySelectorAll('[data-k]').forEach(e=>e.addEventListener('change',()=>{const k=e.dataset.k;let v=e.value;
+  if(k==='dOver'&&v==='')S.p[k]='';else{v=parseFloat(v);if(isNaN(v))v=0;S.p[k]=e.dataset.pc?v/100:v}save();draw()}))}
+async function exportB(){const name='respaldo-granja-'+new Date().toISOString().slice(0,10)+'.json',txt=JSON.stringify(S),file=new File([txt],name,{type:'application/json'});
+ if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file]});return}catch(e){if(e.name==='AbortError')return}}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function importB(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.p||!Array.isArray(d.rows))throw 0;S=d;save();draw();alert('Respaldo importado')}catch(x){alert('El archivo no es un respaldo válido')}};r.readAsText(f)}
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+draw();
+</script></body></html>
